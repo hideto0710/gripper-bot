@@ -9,62 +9,106 @@ var controller = Botkit.slackbot({
 });
 var bot = controller.spawn({ token: process.env.token }).startRTM();
 
-controller.hears(['hello', 'hi'], 'direct_message,direct_mention,mention', function(bot, message) {
-  bot.api.reactions.add({
-    timestamp: message.ts,
-    channel: message.channel,
-    name: 'robot_face',
-  }, function(err, res) {
-    if (err) {
-      bot.botkit.log('Failed to add emoji reaction :(', err);
-    }
-  });
-  controller.storage.users.get(message.user, function(err, user) {
-    if (user && user.name) {
-      bot.reply(message, 'Hello ' + user.name + '!!');
+var Gripper = require('./beat-gripper/Gripper.js');
+var gripper = new Gripper(process.env.apiKey, process.env.apiUrl, process.env.apiUser);
+
+var UserStorage = require('./beat-gripper/UserStorage.js');
+var userStorage = new UserStorage(process.env.MONGODB_URI, process.env.secret, process.env.scheme);
+
+controller.hears(['出勤'], 'direct_message,direct_mention,mention', function(bot, message) {
+  userStorage.get(message.user, function(err, users) {
+    if (users.length === 0) {
+      bot.reply(message, 'I do not know your password yet!');
+      bot.reply(message, 'Say `my password is ***`');
     } else {
-      bot.reply(message, 'Hello.');
+      var password = users[0].password;
+      gripper.attend(password, function(error, response, body) {
+        switch (response.statusCode){
+          case 400:
+            bot.reply(message, body.errorMessage);
+            break;
+          case 401:
+            bot.reply(message, body.errorMessage);
+            break;
+          case 200:
+            bot.api.reactions.add({ timestamp: message.ts, channel: message.channel, name: 'robot_face' },
+              function(err) {
+                if (err) bot.botkit.log('Failed to add emoji reaction :(', err);
+              });
+            break;
+          default:
+            bot.reply(message, 'unhandled error occurred.');
+            break;
+        }
+      });
     }
   });
 });
 
-controller.hears(['call me (.*)', 'my name is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
-  var name = message.match[1];
-  controller.storage.users.get(message.user, function(err, user) {
-    if (!user) {
-      user = {
-        id: message.user,
-      };
-    }
-    user.name = name;
-    controller.storage.users.save(user, function(err, id) {
-      bot.reply(message, 'Got it. I will call you ' + user.name + ' from now on.');
+controller.hears(['退勤'], 'direct_message,direct_mention,mention', function(bot, message) {
+  if (users.length === 0) {
+    bot.reply(message, 'I do not know your password yet!');
+    bot.reply(message, 'Say `my password is ***`');
+  } else {
+    var password = users[0].password;
+    gripper.leave(password, function(error, response, body) {
+      switch (response.statusCode){
+        case 400:
+          bot.reply(message, body.errorMessage);
+          break;
+        case 401:
+          bot.reply(message, body.errorMessage);
+          break;
+        case 200:
+          bot.api.reactions.add({ timestamp: message.ts, channel: message.channel, name: 'robot_face' },
+            function(err) {
+              if (err) bot.botkit.log('Failed to add emoji reaction :(', err);
+            });
+          break;
+        default:
+          bot.reply(message, 'unhandled error occurred.');
+          break;
+      }
     });
+  }
+});
+
+controller.hears(['my password is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
+  var password = message.match[1];
+  userStorage.get(message.user, function(err, users) {
+    if (users.length === 0) {
+      userStorage.set(message.user, password, function(err, results) {
+        console.log(results);
+        bot.reply(message, 'Got it. I remember your password is ' + password);
+      });
+    } else {
+      userStorage.update(message.user, password, function(err, results) {
+        console.log(results);
+        bot.reply(message, 'Got it. I remember your password is ' + password);
+      });
+    }
   });
 });
 
-controller.hears(['what is my name', 'who am i'], 'direct_message,direct_mention,mention', function(bot, message) {
-  controller.storage.users.get(message.user, function(err, user) {
-    if (user && user.name) {
-      bot.reply(message, 'Your name is ' + user.name);
+controller.hears(['what is my password'], 'direct_message,direct_mention,mention', function(bot, message) {
+  userStorage.get(message.user, function(err, users) {
+    if (users.length !== 0) {
+      bot.reply(message, 'Your password is ' + users[0].password);
     } else {
       bot.startConversation(message, function(err, convo) {
         if (!err) {
-          convo.say('I do not know your name yet!');
-          convo.ask('What should I call you?', function(response, convo) {
-            convo.ask('You want me to call you `' + response.text + '`?', [
+          convo.say('I do not know your password yet!');
+          convo.ask('What is your password?', function(response, convo) {
+            convo.ask('Your password is `' + response.text + '`?', [
               {
                 pattern: 'yes',
                 callback: function(response, convo) {
-                  // since no further messages are queued after this,
-                  // the conversation will end naturally with status == 'completed'
                   convo.next();
                 }
               },
               {
                 pattern: 'no',
                 callback: function(response, convo) {
-                  // stop the conversation. this will cause it to end with status == 'stopped'
                   convo.stop();
                 }
               },
@@ -77,23 +121,25 @@ controller.hears(['what is my name', 'who am i'], 'direct_message,direct_mention
               }
             ]);
             convo.next();
-          }, {'key': 'nickname'}); // store the results in a field called nickname
+          }, {'key': 'password'});
           convo.on('end', function(convo) {
             if (convo.status == 'completed') {
               bot.reply(message, 'OK! I will update my dossier...');
-              controller.storage.users.get(message.user, function(err, user) {
-                if (!user) {
-                  user = {
-                    id: message.user,
-                  };
+              userStorage.get(message.user, function(err, user) {
+                var password = convo.extractResponse('password');
+                if (users.length === 0) {
+                  userStorage.set(message.user, password, function(err, results) {
+                    console.log(results);
+                    bot.reply(message, 'Got it. I remember your password is ' + password);
+                  });
+                } else {
+                  userStorage.update(message.user, password, function(err, results) {
+                    console.log(results);
+                    bot.reply(message, 'Got it. I remember your password is ' + password);
+                  });
                 }
-                user.name = convo.extractResponse('nickname');
-                controller.storage.users.save(user, function(err, id) {
-                  bot.reply(message, 'Got it. I will call you ' + user.name + ' from now on.');
-                });
               });
             } else {
-              // this happens if the conversation ended prematurely for some reason
               bot.reply(message, 'OK, nevermind!');
             }
           });
@@ -102,33 +148,6 @@ controller.hears(['what is my name', 'who am i'], 'direct_message,direct_mention
     }
   });
 });
-
-
-controller.hears(['shutdown'], 'direct_message,direct_mention,mention', function(bot, message) {
-  bot.startConversation(message, function(err, convo) {
-    convo.ask('Are you sure you want me to shutdown?', [
-      {
-        pattern: bot.utterances.yes,
-        callback: function(response, convo) {
-          convo.say('Bye!');
-          convo.next();
-          setTimeout(function() {
-            process.exit();
-          }, 3000);
-        }
-      },
-      {
-        pattern: bot.utterances.no,
-        default: true,
-        callback: function(response, convo) {
-          convo.say('*Phew!*');
-          convo.next();
-        }
-      }
-    ]);
-  });
-});
-
 
 controller.hears(['uptime', 'identify yourself', 'who are you', 'what is your name'],
   'direct_message,direct_mention,mention', function(bot, message) {
