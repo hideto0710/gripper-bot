@@ -46,31 +46,33 @@ controller.hears(['出勤'], 'direct_message,direct_mention,mention', function(b
 });
 
 controller.hears(['退勤'], 'direct_message,direct_mention,mention', function(bot, message) {
-  if (users.length === 0) {
-    bot.reply(message, 'I do not know your password yet!');
-    bot.reply(message, 'Say `my password is ***`');
-  } else {
-    var password = users[0].password;
-    gripper.leave(password, function(error, response, body) {
-      switch (response.statusCode){
-        case 400:
-          bot.reply(message, body.errorMessage);
-          break;
-        case 401:
-          bot.reply(message, body.errorMessage);
-          break;
-        case 200:
-          bot.api.reactions.add({ timestamp: message.ts, channel: message.channel, name: 'robot_face' },
-            function(err) {
-              if (err) bot.botkit.log('Failed to add emoji reaction :(', err);
-            });
-          break;
-        default:
-          bot.reply(message, 'unhandled error occurred.');
-          break;
-      }
-    });
-  }
+  userStorage.get(message.user, function(err, users) {
+    if (users.length === 0) {
+      bot.reply(message, 'I do not know your password yet!');
+      bot.reply(message, 'Say `my password is ***`');
+    } else {
+      var password = users[0].password;
+      gripper.leave(password, function (error, response, body) {
+        switch (response.statusCode) {
+          case 400:
+            bot.reply(message, body.errorMessage);
+            break;
+          case 401:
+            bot.reply(message, body.errorMessage);
+            break;
+          case 200:
+            bot.api.reactions.add({timestamp: message.ts, channel: message.channel, name: 'robot_face'},
+              function (err) {
+                if (err) bot.botkit.log('Failed to add emoji reaction :(', err);
+              });
+            break;
+          default:
+            bot.reply(message, 'unhandled error occurred.');
+            break;
+        }
+      });
+    }
+  });
 });
 
 controller.hears(['my password is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
