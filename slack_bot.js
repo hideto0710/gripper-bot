@@ -15,6 +15,8 @@ var gripper = new Gripper(process.env.apiKey, process.env.apiUrl, process.env.ap
 var UserStorage = require('./beat-gripper/UserStorage.js');
 var userStorage = new UserStorage(process.env.MONGODB_URI, process.env.secret, process.env.scheme);
 
+var ReplyMessages = require('./messages.js');
+
 controller.hears(['出勤'], 'direct_message,direct_mention,mention', function(bot, message) {
   userStorage.get(message.user, function(err, users) {
     if (users.length === 0) {
@@ -25,6 +27,11 @@ controller.hears(['出勤'], 'direct_message,direct_mention,mention', function(b
       gripper.attend(password, function(error, response, body) {
         switch (response.statusCode){
           case 400:
+            if (body.errorMessage.match(/出勤中/)) {
+              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyAttend));
+            } else if (body.errorMessage.match(/退勤/)) {
+              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyLeft));
+            }
             bot.reply(message, body.errorMessage);
             break;
           case 401:
@@ -55,6 +62,11 @@ controller.hears(['退勤'], 'direct_message,direct_mention,mention', function(b
       gripper.leave(password, function (error, response, body) {
         switch (response.statusCode) {
           case 400:
+            if (body.errorMessage.match(/出勤中/)) {
+              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyAttend));
+            } else if (body.errorMessage.match(/退勤/)) {
+              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyLeft));
+            }
             bot.reply(message, body.errorMessage);
             break;
           case 401:
@@ -158,6 +170,11 @@ controller.hears(['uptime', 'identify yourself', 'who are you', 'what is your na
     bot.reply(message,
       ':robot_face: I am a bot named <@' + bot.identity.name +
       '>. I have been running for ' + uptime + ' on ' + hostname + '.');
+  }
+);
+
+controller.hears('', 'direct_message,direct_mention,mention', function(bot, message) {
+    bot.reply(message, ReplyMessages.random(ReplyMessages.NothingToDo));
   }
 );
 
