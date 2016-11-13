@@ -62,8 +62,8 @@ controller.hears(['退勤'], 'direct_message,direct_mention,mention', function(b
       gripper.leave(password, function (error, response, body) {
         switch (response.statusCode) {
           case 400:
-            if (body.errorMessage.match(/出勤中/)) {
-              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyAttend));
+            if (body.errorMessage.match(/未だ出勤/)) {
+              bot.reply(message, ReplyMessages.random(ReplyMessages.NotYet));
             } else if (body.errorMessage.match(/退勤/)) {
               bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyLeft));
             }
