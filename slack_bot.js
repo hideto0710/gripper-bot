@@ -163,6 +163,12 @@ controller.hears(['what is my password'], 'direct_message,direct_mention,mention
   });
 });
 
+controller.hears(['ありがとう', 'サンキュー', 'thanks', 'thank you', 'thx'],
+  'direct_message,direct_mention,mention', function(bot, message) {
+    bot.reply(message, ReplyMessages.random(ReplyMessages.ThankYou));
+  }
+);
+
 controller.hears(['uptime', 'identify yourself', 'who are you', 'what is your name'],
   'direct_message,direct_mention,mention', function(bot, message) {
     var hostname = os.hostname();

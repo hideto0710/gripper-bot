@@ -17,6 +17,11 @@ var ReplyMessages = {
     'そんなこと言われても。。ごめんなさい、僕はまだ出退勤しかできないんだ。',
     'もっと色々して欲しかったら僕を改良してよ！'
   ],
+  ThankYou: [
+    'おやすいご用だよ。',
+    'お礼なんて大丈夫。僕にはこれくらいしかできないから。',
+    'こちらこそ。僕を頼ってくれてありがとう。'
+  ],
   random: function (arr) {
     var index = Math.floor(Math.random() * arr.length) ;
     return arr[index];
