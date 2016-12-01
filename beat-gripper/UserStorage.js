@@ -29,6 +29,20 @@ function UserStorage(mongoUrl, secret, scheme) {
     });
   };
 
+  this.setJobcan = function (userId, jobcanUser, callback) {
+    MongoClient.connect(mongoUrl, function(err, db) {
+      var collection = db.collection('users');
+      collection.insertMany([ { 'user_id': userId, jobcanUser: jobcanUser } ], callback);
+    });
+  };
+
+  this.updateJobcan = function (userId, jobcanUser, callback) {
+    MongoClient.connect(mongoUrl, function(err, db) {
+      var collection = db.collection('users');
+      collection.updateOne({ 'user_id': userId }, { $set: { jobcanUser : jobcanUser } }, callback);
+    });
+  };
+
   this.get = function (userId, callback) {
     MongoClient.connect(mongoUrl, function(err, db) {
       var collection = db.collection('users');
