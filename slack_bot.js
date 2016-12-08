@@ -9,9 +9,6 @@ var controller = Botkit.slackbot({
 });
 var bot = controller.spawn({ token: process.env.token }).startRTM();
 
-var Gripper = require('./beat-gripper/Gripper.js');
-var gripper = new Gripper(process.env.apiKey, process.env.apiUrl, process.env.apiUser);
-
 var Jobcan = require('./beat-gripper/Jobcan.js');
 var jobcan = new Jobcan(process.env.apiKey, process.env.apiJobcanUrl, process.env.apiJobcanClient);
 
@@ -25,44 +22,9 @@ controller.hears(['出勤'], 'direct_message,direct_mention,mention', function(b
     if (users.length === 0) {
       bot.reply(message, 'I do not know your password yet!');
       bot.reply(message, 'Say `my password is ***`');
-    } else {
-      var password = users[0].password;
-      gripper.attend(password, function(error, response, body) {
-        switch (response.statusCode){
-          case 400:
-            if (body.errorMessage.match(/出勤中/)) {
-              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyAttend));
-            } else if (body.errorMessage.match(/退勤/)) {
-              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyLeft));
-            }
-            bot.reply(message, body.errorMessage);
-            break;
-          case 401:
-            bot.reply(message, body.errorMessage);
-            break;
-          case 200:
-            bot.api.reactions.add({ timestamp: message.ts, channel: message.channel, name: 'robot_face' },
-              function(err) {
-                if (err) bot.botkit.log('Failed to add emoji reaction :(', err);
-              });
-            break;
-          default:
-            bot.reply(message, 'unhandled error occurred.');
-            break;
-        }
-      });
-    }
-  });
-});
-
-controller.hears(['jobcan出'], 'direct_message,direct_mention,mention', function(bot, message) {
-  userStorage.get(message.user, function(err, users) {
-    if (users.length === 0) {
-      bot.reply(message, 'I do not know your password yet!');
-      bot.reply(message, 'Say `my password is ***`');
     } else if (!users[0].jobcanUser) {
-      bot.reply(message, 'I do not know your jobcan user yet!');
-      bot.reply(message, 'Say `my jobcan user is ***`');
+      bot.reply(message, 'I do not know your userid yet!');
+      bot.reply(message, 'Say `my user id is ***`');
     } else {
       var password = users[0].password;
       var jobcanUser = users[0].jobcanUser;
@@ -99,44 +61,9 @@ controller.hears(['退勤'], 'direct_message,direct_mention,mention', function(b
     if (users.length === 0) {
       bot.reply(message, 'I do not know your password yet!');
       bot.reply(message, 'Say `my password is ***`');
-    } else {
-      var password = users[0].password;
-      gripper.leave(password, function (error, response, body) {
-        switch (response.statusCode) {
-          case 400:
-            if (body.errorMessage.match(/未だ出勤/)) {
-              bot.reply(message, ReplyMessages.random(ReplyMessages.NotYet));
-            } else if (body.errorMessage.match(/退勤/)) {
-              bot.reply(message, ReplyMessages.random(ReplyMessages.AlreadyLeft));
-            }
-            bot.reply(message, body.errorMessage);
-            break;
-          case 401:
-            bot.reply(message, body.errorMessage);
-            break;
-          case 200:
-            bot.api.reactions.add({timestamp: message.ts, channel: message.channel, name: 'robot_face'},
-              function (err) {
-                if (err) bot.botkit.log('Failed to add emoji reaction :(', err);
-              });
-            break;
-          default:
-            bot.reply(message, 'unhandled error occurred.');
-            break;
-        }
-      });
-    }
-  });
-});
-
-controller.hears(['jobcan退'], 'direct_message,direct_mention,mention', function(bot, message) {
-  userStorage.get(message.user, function(err, users) {
-    if (users.length === 0) {
-      bot.reply(message, 'I do not know your password yet!');
-      bot.reply(message, 'Say `my password is ***`');
     } else if (!users[0].jobcanUser) {
-      bot.reply(message, 'I do not know your jobcan user yet!');
-      bot.reply(message, 'Say `my jobcan user is ***`');
+      bot.reply(message, 'I do not know your user id yet!');
+      bot.reply(message, 'Say `my user id is ***`');
     } else {
       var password = users[0].password;
       var jobcanUser = users[0].jobcanUser;
@@ -183,7 +110,7 @@ controller.hears(['my password is (.*)'], 'direct_message,direct_mention,mention
   });
 });
 
-controller.hears(['my jobcan user is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
+controller.hears(['my user id is (.*)'], 'direct_message,direct_mention,mention', function(bot, message) {
   var jobcanUser = message.match[1];
   userStorage.get(message.user, function(err, users) {
     if (users.length === 0) {
