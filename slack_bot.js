@@ -41,6 +41,9 @@ controller.hears(['出勤'], 'direct_message,direct_mention,mention', function(b
           case 401:
             bot.reply(message, body.errorMessage);
             break;
+          case 504:
+            bot.reply(message, ReplyMessages.random(ReplyMessages.Error));
+            break;
           case 200:
             bot.api.reactions.add({ timestamp: message.ts, channel: message.channel, name: 'robot_face' },
               function(err) {
@@ -79,6 +82,9 @@ controller.hears(['退勤'], 'direct_message,direct_mention,mention', function(b
             break;
           case 401:
             bot.reply(message, body.errorMessage);
+            break;
+          case 504:
+            bot.reply(message, ReplyMessages.random(ReplyMessages.Error));
             break;
           case 200:
             bot.api.reactions.add({timestamp: message.ts, channel: message.channel, name: 'robot_face'},

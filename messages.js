@@ -22,6 +22,10 @@ var ReplyMessages = {
     'お礼なんて大丈夫。僕にはこれくらいしかできないから。',
     'こちらこそ。僕を頼ってくれてありがとう。'
   ],
+  Error: [
+    'うぅ。。僕の力がちょっと足りないみたい。もう一回試してみて。',
+    'これだから古いサイトは！リトライが必要だ。。'
+  ],
   random: function (arr) {
     var index = Math.floor(Math.random() * arr.length) ;
     return arr[index];
